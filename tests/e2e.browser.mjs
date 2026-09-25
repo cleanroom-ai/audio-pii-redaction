@@ -6,7 +6,7 @@ import { openApp } from "@cleanroom-ai/core/testing/browser.mjs";
 const base = process.argv[2] || "http://127.0.0.1:8090/";
 const shotsDir = fileURLToPath(new URL("../.cache/e2e/", import.meta.url));
 mkdirSync(shotsDir, { recursive: true });
-const { page, shot, assertLogo, finish, external } = await openApp(base, { shotsDir });
+const { page, shot, assertLogo, finish } = await openApp(base, { shotsDir });
 await page.goto(base);
 await page.locator("#engine[data-kind=ok]").waitFor({ timeout: 120_000 });
 await assertLogo();
@@ -39,7 +39,6 @@ const [wav] = await Promise.all([page.waitForEvent("download"), page.evaluate(()
 const wavBody = readFileSync(await wav.path());
 assert.equal(wavBody.subarray(0, 4).toString(), "RIFF");
 await wav.delete();
-external.splice(0, external.length, ...external.filter((u) => !/^(edge|chrome):\/\//.test(u)));
 await finish();
 console.log("E2E OK");
 
