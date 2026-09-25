@@ -1,0 +1,7 @@
+node_modules/
+.cache/
+vendor/
+models/*
+!models/README.md
+_*.mjs
+*.log

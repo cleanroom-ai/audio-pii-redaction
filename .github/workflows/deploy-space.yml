@@ -1,0 +1,47 @@
+name: Deploy Hugging Face Space
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  ONNXRUNTIME_NODE_INSTALL_CUDA: skip
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - uses: actions/cache@v4
+        with:
+          path: .cache/Xenova/whisper-tiny.en
+          key: whisper-${{ hashFiles('models/README.md') }}
+      - run: npm ci
+      - run: npm run vendor
+      - name: Upload Space
+        if: ${{ secrets.HF_TOKEN != '' }}
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          python -m pip install --upgrade huggingface_hub
+          python - <<'PY'
+          from huggingface_hub import HfApi
+          HfApi().upload_folder(
+              repo_id="cleanroom-ai/audio-pii-redaction",
+              repo_type="space",
+              folder_path=".",
+              ignore_patterns=["node_modules/**", ".cache/**", "tests/**", "scripts/**", ".github/**", "package.json", "package-lock.json", "_*.mjs"],
+          )
+          PY
+      - name: Skip notice
+        if: ${{ secrets.HF_TOKEN == '' }}
+        run: echo "::notice::HF_TOKEN is not set; skipping Space upload"

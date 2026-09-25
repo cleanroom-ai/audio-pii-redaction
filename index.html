@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' blob: 'wasm-unsafe-eval'; worker-src 'self' blob:; connect-src 'self' blob: data:; img-src 'self' blob: data:; media-src 'self' blob: data:; style-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="no-referrer">
+  <title>Audio Redactor — bleep names, numbers & secrets</title>
+  <meta name="description" content="Bleep names, numbers and secrets in recordings in your browser. No uploads.">
+  <link rel="icon" href="favicon.ico" sizes="48x48">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <link rel="manifest" href="assets/site.webmanifest">
+  <meta name="theme-color" content="#0f172a">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Audio Redactor">
+  <meta property="og:description" content="Bleep names, numbers & secrets in recordings — in your browser.">
+  <meta property="og:url" content="https://huggingface.co/spaces/cleanroom-ai/audio-pii-redaction">
+  <meta property="og:image" content="https://cleanroom-ai-audio-pii-redaction.static.hf.space/assets/social-preview.png">
+  <meta property="og:image:width" content="1280"><meta property="og:image:height" content="640">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="stylesheet" href="vendor/core/theme.css">
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+  <header class="top">
+    <div class="brand"><img class="logo" src="assets/icon.svg" width="44" height="44" alt=""><div><h1>Audio Redactor</h1><p class="tag">Bleep names, numbers &amp; secrets in recordings — in your browser. <a class="family" href="https://github.com/paragpsawant" target="_blank" rel="noopener noreferrer">cleanroom-ai</a></p></div></div>
+    <p class="privacy">🔒 Runs 100% in your browser. Your audio is never uploaded.</p>
+  </header>
+  <main>
+    <section id="drop" class="drop" tabindex="0" role="button" aria-label="Choose, drop or record audio">
+      <input id="file" type="file" accept="audio/*,video/*,.wav,.mp3,.m4a,.ogg,.webm,.mp4,.mov" hidden>
+      <div class="drop-inner"><div class="drop-icon">♪</div><p class="drop-title">Drop audio/video here, click to choose, or record from your mic</p><p class="drop-sub">Whisper transcription, PII detection, review, bleep/silence/cut and WAV/SRT/transcript export all happen locally.</p>
+        <div class="examples"><span>Try an example (fake data):</span><button type="button" data-example="examples/voicemail.wav" data-transcript="examples/voicemail.json" data-name="voicemail">Voicemail</button><button type="button" data-example="examples/support-call.wav" data-transcript="examples/support-call.json" data-name="support-call">Support call</button></div>
+        <p><button id="record" type="button">Record from mic</button><button id="stop-record" type="button" hidden>Stop recording</button></p>
+      </div>
+    </section>
+    <section id="workspace" class="workspace" hidden>
+      <div class="viewer"><div class="toolbar"><div><button id="play-preview" type="button">▶ Preview with edits</button></div><div class="actions"><button id="download-txt" type="button">Transcript .txt</button><button id="download-srt" type="button">SRT</button><button id="download-wav" type="button" class="primary">Download WAV</button></div></div><p id="status" class="status" role="status" aria-live="polite"></p><canvas id="waveform" aria-label="Waveform with redaction regions"></canvas><audio id="audio" controls></audio><div id="transcript" class="transcript" aria-label="Transcript words"></div></div>
+      <aside class="side"><div class="card"><div class="card-head"><h2>Regions</h2></div><ul id="detections" class="detections"></ul><p id="detections-empty" class="muted">Nothing yet.</p></div><div class="card"><h2>Redaction style</h2><div class="styles"><label><input type="radio" name="style" value="bleep" checked> Bleep (1 kHz)</label><label><input type="radio" name="style" value="silence"> Silence</label><label><input type="radio" name="style" value="cut"> Cut out</label></div></div><details class="card" open><summary><h2>Scan options</h2></summary><label class="check"><input id="use-ner" type="checkbox" checked> Use on-device name model <span class="muted">(~28 MB one-time)</span></label><label class="check"><input id="cleanup" type="checkbox"> Remove fillers &amp; long pauses</label><label class="field">Also redact these words <input id="terms" type="text" placeholder="Contoso, project name, host"></label><button id="rescan" type="button" class="primary wide">Scan again</button></details><button id="reset" type="button" class="wide ghost">← New recording</button></aside>
+    </section>
+  </main>
+  <footer><p id="engine" class="engine">Starting engine…</p><p class="muted">Whisper ASR · bert-small-pii names · ONNX Runtime Web · transformers.js. Always review before sharing.</p><p class="muted">Built by <a href="https://github.com/paragpsawant" target="_blank" rel="noopener noreferrer">Parag Sawant</a> · <a href="https://github.com/paragpsawant/audio-pii-redaction" target="_blank" rel="noopener noreferrer">Source on GitHub</a> · part of cleanroom-ai · Apache-2.0</p></footer>
+</body>
+</html>
