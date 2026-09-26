@@ -20,7 +20,13 @@ try {
     if (await page.locator("#reset").isVisible()) await page.locator("#reset").click();
     const t0 = Date.now();
     await page.getByRole("button", { name }).click();
-    await page.locator("#status[data-kind=ok]").waitFor();
+    await page.locator("#status[data-kind=ok]").waitFor({ timeout: Number(process.env.E2E_SCAN_TIMEOUT_MS || 240_000) }).catch(async (e) => {
+      await shot(`${name.toLowerCase().replace(/\W+/g, "-")}-FAILED`).catch(() => {});
+      const status = await page.locator("#status").innerText().catch(() => "?");
+      const kind = await page.locator("#status").getAttribute("data-kind").catch(() => "?");
+      const engine = await page.locator("#engine").innerText().catch(() => "?");
+      throw new Error(`${name}: scan did not finish; status[${kind}]="${status}" engine="${engine}"\n${app.problems.join("\n")}\n${e.message}`);
+    });
     const status = await page.locator("#status").innerText();
     const items = await page.locator("#detections li .name").allInnerTexts();
     console.log(`${name}: ${((Date.now() - t0) / 1000).toFixed(1)}s | ${status}`);
