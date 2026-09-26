@@ -1,11 +1,11 @@
 ---
 title: Audio Redactor
 emoji: 🔊
-colorFrom: gray
-colorTo: indigo
+colorFrom: purple
+colorTo: gray
 sdk: static
 app_file: index.html
-pinned: false
+pinned: true
 license: apache-2.0
 custom_headers:
   cross-origin-embedder-policy: require-corp
