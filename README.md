@@ -7,6 +7,10 @@ sdk: static
 app_file: index.html
 pinned: false
 license: apache-2.0
+custom_headers:
+  cross-origin-embedder-policy: require-corp
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: cross-origin
 short_description: Bleep names, numbers & secrets in audio, in-browser
 thumbnail: https://huggingface.co/spaces/cleanroom-ai/audio-pii-redaction/resolve/main/assets/social-preview.png
 models:
