@@ -55,7 +55,7 @@ Podcasters, support teams and people sharing meeting recordings often need to re
 - 🎙️ File drop/chooser, mic recording and fake synthetic examples.
 - 🧠 Whisper (`Xenova/whisper-tiny.en`) via transformers.js + ONNX Runtime Web with word timestamps.
 - 🧩 Shared `@cleanroom-ai/core` PII rules and NER model for names/addresses.
-- 🔢 Spoken-form normalization for digit-by-digit phones/cards/SSNs, spoken emails and password phrases.
+- 🔢 Spoken-form normalization for digit-by-digit phones/cards/SSNs (including separators and leading NANP country code), spoken emails with digit words, addresses and password phrases.
 - 🧹 Optional filler-word and long-silence cleanup.
 - 🎧 Bleep, silence or cut selected regions, with ±80 ms padding.
 - 📄 Export redacted WAV, transcript `.txt` and `.srt`.

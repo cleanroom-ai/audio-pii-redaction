@@ -11,7 +11,7 @@ const els = {
   cleanup: $("#cleanup"), terms: $("#terms"), useNer: $("#use-ner"), record: $("#record"), stop: $("#stop-record"),
   play: $("#play-preview"), wav: $("#download-wav"), txt: $("#download-txt"), srt: $("#download-srt"), reset: $("#reset"), rescan: $("#rescan"),
 };
-const state = { audioBuffer: null, samples16: null, words: [], detections: [], selected: new Set(), fileName: "audio", id: 0, recorder: null, chunks: [] };
+const state = { audioBuffer: null, samples16: null, words: [], detections: [], selected: new Set(), fileName: "audio", id: 0, recorder: null, chunks: [], audioUrl: null };
 const worker = new Worker(new URL("./worker.js", import.meta.url), { type: "module" });
 const pending = new Map();
 worker.onmessage = ({ data: m }) => {
@@ -63,7 +63,7 @@ async function loadBlob(blob, name, knownWords = null) {
     state.audioBuffer = await ctx.decodeAudioData(await blob.arrayBuffer());
     await ctx.close();
     state.samples16 = await resampleTo16k(state.audioBuffer);
-    els.audio.src = URL.createObjectURL(blob);
+    setAudioBlob(blob);
     els.drop.hidden = true; els.workspace.hidden = false;
     await process(knownWords);
   } catch (err) { setStatus(`Could not read that media file: ${err.message}`, "warn"); }
@@ -99,7 +99,7 @@ function renderList() {
   els.empty.hidden = state.detections.length > 0;
 }
 function toggle(id, on = null) { if (on ?? !state.selected.has(id)) state.selected.add(id); else state.selected.delete(id); render(); }
-async function playPreview() { const blob = encodeWav(renderEditedAudio(state.audioBuffer, state.detections, state.selected, style())); const url = URL.createObjectURL(blob); els.audio.src = url; await els.audio.play(); }
+async function playPreview() { const blob = encodeWav(renderEditedAudio(state.audioBuffer, state.detections, state.selected, style())); setAudioBlob(blob); await els.audio.play(); }
 function style() { return document.querySelector("input[name=style]:checked").value; }
 function terms() { return els.terms.value.split(new RegExp("[,\\n]")).map((t) => t.trim()).filter(Boolean); }
 function pretty(d) { return `${prettyLabel(d.label)} ${time(d.startTime)}–${time(d.endTime)}`; }
@@ -111,4 +111,7 @@ function setStatus(text, kind = "") { els.status.textContent = text; els.status.
 function setEngine(text, kind = "") { els.engine.textContent = text; els.engine.dataset.kind = kind; }
 function downloadBlob(blob, name) { const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: name }); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); }
 function downloadText(text, name) { downloadBlob(new Blob([text], { type: "text/plain;charset=utf-8" }), name); }
-function reset() { state.audioBuffer = null; state.words = []; state.detections = []; state.selected = new Set(); els.workspace.hidden = true; els.drop.hidden = false; els.file.value = ""; setStatus(""); render(); }
+function setAudioBlob(blob) { revokeAudioUrl(); state.audioUrl = URL.createObjectURL(blob); els.audio.src = state.audioUrl; }
+function revokeAudioUrl() { if (state.audioUrl) URL.revokeObjectURL(state.audioUrl); state.audioUrl = null; els.audio.removeAttribute("src"); }
+function reset() { revokeAudioUrl(); state.audioBuffer = null; state.words = []; state.detections = []; state.selected = new Set(); els.workspace.hidden = true; els.drop.hidden = false; els.file.value = ""; setStatus(""); render(); }
+addEventListener("beforeunload", revokeAudioUrl);

@@ -6,6 +6,7 @@ const DIGITS = new Map(Object.entries({ zero:"0", oh:"0", o:"0", one:"1", won:"1
 const TEENS = new Map(Object.entries({ ten:"10", eleven:"11", twelve:"12", thirteen:"13", fourteen:"14", fifteen:"15", sixteen:"16", seventeen:"17", eighteen:"18", nineteen:"19" }));
 const TENS = new Map(Object.entries({ twenty:"2", thirty:"3", forty:"4", fourty:"4", fifty:"5", sixty:"6", seventy:"7", eighty:"8", ninety:"9" }));
 const EMAIL_JOIN = new Map(Object.entries({ dot:".", period:".", point:".", at:"@", dash:"-", hyphen:"-", underscore:"_" }));
+const DIGIT_SEPARATORS = new Map(Object.entries({ dash:"-", hyphen:"-", minus:"-" }));
 const WORD_RE = /[\p{L}\p{N}'’.-]+/gu;
 
 export function asrChunksToWords(result) {
@@ -73,41 +74,54 @@ function readDigit(words, i) {
 }
 
 function readDigitRun(words, i) {
-  let j = i, digits = "", idx = [];
+  let j = i, digits = "", text = "", idx = [];
   while (j < words.length) {
     const d = readDigit(words, j);
-    if (!d) break;
-    digits += d.digits;
-    for (let k = 0; k < d.used; k++) idx.push(j + k);
-    j += d.used;
+    if (d) {
+      digits += d.digits; text += d.digits;
+      for (let k = 0; k < d.digits.length; k++) idx.push(j + Math.min(k, d.used - 1));
+      j += d.used;
+      continue;
+    }
+    const sep = DIGIT_SEPARATORS.get(token(words[j]));
+    if (!sep || !digits || !readDigit(words, j + 1)) break;
+    text += sep; idx.push(j); j++;
   }
-  return digits.length >= 3 ? { digits, next: j, indexes: idx } : null;
+  return digits.length >= 3 ? { digits, text, next: j, indexes: idx } : null;
 }
 
 function isDigitWord(t) { return DIGITS.has(t) || TEENS.has(t) || TENS.has(t) || t === "double" || t === "triple" || /^[\d.-]+$/.test(t); }
 function readEmail(words, i) {
-  if (["email", "e-mail", "mail"].includes(token(words[i]))) return readEmail(words, i + 1);
+  if (token(words[i]) === "my" && ["email", "e-mail", "mail"].includes(token(words[i + 1] || {}))) return readEmail(words, i + 1);
+  if (["email", "e-mail", "mail"].includes(token(words[i]))) {
+    let j = i + 1;
+    if (token(words[j] || {}) === "address") j++;
+    if (token(words[j] || {}) === "is") j++;
+    return readEmail(words, j);
+  }
   const look = words.slice(i, i + 14).map(token);
   const atRel = look.findIndex((t) => t === "at" || t.includes("@"));
-  if (atRel <= 0 || look.slice(0, atRel).some(isDigitWord)) return null;
+  if (atRel <= 0) return null;
   let j = i, s = "", indexes = [], hasAt = false, hasDotAfterAt = false, lastWasJoin = false;
   while (j < words.length && j < i + 18) {
     const raw = String(words[j].text || "").toLowerCase();
     const t = token(words[j]);
     if (!t || ["and", "or", "then"].includes(t)) break;
-    let part = null;
+    let part = null, used = 1, partIndexes = null;
+    const digit = readDigit(words, j);
     if (/^\.[a-z0-9._%+-]+$/.test(raw)) part = `.${t}`;
     else if (EMAIL_JOIN.has(t)) part = EMAIL_JOIN.get(t);
     else if (/^[a-z0-9._%+-]+@[a-z0-9.-]+$/.test(t)) part = t;
+    else if (digit) { part = digit.digits; used = digit.used; partIndexes = Array.from({ length: part.length }, (_, k) => j + Math.min(k, used - 1)); }
     else if (/^[a-z0-9._%+-]+$/.test(t) && !isDigitWord(t)) part = t;
     else break;
     if (part.includes("@")) { if (hasAt || !s || lastWasJoin) break; hasAt = true; }
     if ((part === "." || part.includes(".")) && hasAt) hasDotAfterAt = true;
     if ((part === "." || part === "@") && lastWasJoin) break;
     s += part;
-    indexes.push(...Array.from({ length: part.length }, () => j));
+    indexes.push(...(partIndexes || Array.from({ length: part.length }, () => j)));
     lastWasJoin = part.length === 1 && /[.@_-]/.test(part);
-    j++;
+    j += used;
     const next = token(words[j] || {});
     if (hasAt && hasDotAfterAt && /@[^@]+\.[a-z]{2,}$/i.test(s) && !["dot", "period", "point", "dash", "hyphen", "underscore"].includes(next)) break;
   }
@@ -120,7 +134,7 @@ export function normalizeSpoken(words) {
     const email = readEmail(words, i);
     if (email) { emit(out, email.email, email.indexes, "email", email.email); i = email.next; continue; }
     const run = readDigitRun(words, i);
-    if (run) { emit(out, run.digits, run.indexes, "digits", run.digits); i = run.next; continue; }
+    if (run) { emit(out, run.text, run.indexes, "digits", run.digits); i = run.next; continue; }
     emit(out, words[i].text, [i]); i++;
   }
   return out;
@@ -137,8 +151,39 @@ function originalHeuristics(text) {
   const addAll = (re, label, category, group = 1) => { for (const m of text.matchAll(re)) { const v = m[group]; if (!v) continue; const start = m.index + m[0].indexOf(v); spans.push({ start, end: start + v.length, label, category, score: 0.9, source: "speech-rule" }); } };
   addAll(/\b(?:this is|my name is|i am|i'm|i’m)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2})\b/g, "PERSON", "person");
   addAll(/\b(?:address is|at|ship to|located at)\s+(\d{1,5}\s+[A-Z][\w'-]+(?:\s+[A-Z][\w'-]+){0,3})\b/g, "ADDRESS", "location");
-  addAll(/\b(?:my\s+)?(?:password|passcode|pin)\s+(?:is|equals|as)\s+((?:[\w'-]+\s*){1,5})/gi, "PASSWORD_OR_SECRET", "secrets");
-  for (const m of text.matchAll(/\b\d[\d .-]{7,}\d\b/g)) { const digits = m[0].replace(/\D/g, ""); if (digits.length === 10 || (digits.length === 9 && /(?:call|phone|back at).{0,30}$/i.test(text.slice(0, m.index)))) spans.push({ start: m.index, end: m.index + m[0].length, label: "PHONE", category: "contact", score: 0.95, source: "speech-rule" }); else if (luhn(digits)) spans.push({ start: m.index, end: m.index + m[0].length, label: "CREDIT_CARD", category: "financial", score: 0.95, source: "speech-rule" }); }
+  spans.push(...passwordSpans(text));
+  for (const m of text.matchAll(/\b\d[\d .-]{7,}\d\b/g)) { const digits = m[0].replace(/\D/g, ""); if (digits.length === 10 || (digits.length === 11 && digits.startsWith("1")) || (digits.length === 9 && /(?:call|phone|back at).{0,30}$/i.test(text.slice(0, m.index)))) spans.push({ start: m.index, end: m.index + m[0].length, label: "PHONE", category: "contact", score: 0.95, source: "speech-rule" }); else if (luhn(digits)) spans.push({ start: m.index, end: m.index + m[0].length, label: "CREDIT_CARD", category: "financial", score: 0.95, source: "speech-rule" }); }
+  return spans;
+}
+
+const SPELLING_CONTROLS = new Set(["capital", "uppercase", "upper", "lowercase", "lower", "letter", "number", "digit", "symbol"]);
+const PUNCT_WORDS = new Set(["exclamation", "mark", "question", "comma", "period", "dot", "dash", "hyphen", "minus", "underscore", "slash", "backslash", "colon", "semicolon", "quote", "apostrophe", "at", "pound", "hash", "dollar", "percent", "ampersand", "star", "asterisk", "plus", "equal", "equals", "open", "close", "left", "right", "paren", "parenthesis", "bracket", "brace"]);
+function isSpellingToken(t) {
+  return /^[a-z]$/i.test(t) || DIGITS.has(t) || TEENS.has(t) || TENS.has(t) || SPELLING_CONTROLS.has(t) || PUNCT_WORDS.has(t);
+}
+function passwordSpans(text) {
+  const spans = [];
+  for (const m of text.matchAll(/\b(?:my\s+)?(?:password|passcode|pin)\s+(?:is|equals|as)\s+/gi)) {
+    const base = m.index + m[0].length;
+    const tail = text.slice(base);
+    const toks = [...tail.matchAll(WORD_RE)].map((x) => ({ text: x[0], token: x[0].toLowerCase().replace(/^[^a-z0-9]+|[^a-z0-9]+$/g, ""), start: base + x.index, end: base + x.index + x[0].length, relStart: x.index, relEnd: x.index + x[0].length }));
+    if (!toks.length) continue;
+    let end = toks[0].end, count = 0;
+    while (count < toks.length && isSpellingToken(toks[count].token)) {
+      end = toks[count].end; count++;
+      const nextStart = count < toks.length ? toks[count].relStart : tail.length;
+      if (/[.!?;]/.test(tail.slice(toks[count - 1].relEnd, nextStart))) break;
+    }
+    if (count < 2) {
+      end = toks[0].end;
+      for (let i = 1; i < Math.min(5, toks.length); i++) {
+        const gap = text.slice(toks[i - 1].end, toks[i].start);
+        if (/[.!?;]/.test(gap)) break;
+        end = toks[i].end;
+      }
+    }
+    spans.push({ start: base, end, label: "PASSWORD_OR_SECRET", category: "secrets", score: 0.9, source: "speech-rule" });
+  }
   return spans;
 }
 
@@ -172,12 +217,13 @@ export async function detectTranscript(words, { categories = null, customTerms =
   const ruleOriginal = findSpans(original.text, categories, customTerms);
   const heuristic = originalHeuristics(original.text).filter((s) => !wanted || wanted.has(s.category));
   const ruleNorm = findSpans(normalized.text, categories, customTerms);
+  const heuristicNorm = originalHeuristics(normalized.text).filter((s) => !wanted || wanted.has(s.category)).map((s) => ({ ...s, source: "normalized-speech-rule" }));
   const spoken = [];
   for (const seg of normalized.segments) {
     if (seg.kind === "email" && (!wanted || wanted.has("contact"))) spoken.push({ start: seg.start, end: seg.end, label: "EMAIL", category: "contact", score: 1, source: "spoken", segment: seg });
     if (seg.kind === "digits") {
       const n = seg.value.length;
-      if (n === 10 && (!wanted || wanted.has("contact"))) spoken.push({ start: seg.start, end: seg.end, label: "PHONE", category: "contact", score: 1, source: "spoken", segment: seg });
+      if ((n === 10 || (n === 11 && seg.value.startsWith("1"))) && (!wanted || wanted.has("contact"))) spoken.push({ start: seg.start, end: seg.end, label: "PHONE", category: "contact", score: 1, source: "spoken", segment: seg });
       else if (n === 9 && (!wanted || wanted.has("government_id"))) spoken.push({ start: seg.start, end: seg.end, label: "US_SSN", category: "government_id", score: 0.86, source: "spoken", segment: seg });
       else if (luhn(seg.value) && (!wanted || wanted.has("financial"))) spoken.push({ start: seg.start, end: seg.end, label: "CREDIT_CARD", category: "financial", score: 1, source: "spoken", segment: seg });
     }
@@ -188,6 +234,7 @@ export async function detectTranscript(words, { categories = null, customTerms =
   const mapped = [
     ...spans.map((s) => mapSpan(s, original, words)),
     ...ruleNorm.map((s) => mapSpan({ ...s, source: s.source || "normalized" }, normalized, words, normalized.text)),
+    ...heuristicNorm.map((s) => mapSpan(s, normalized, words, normalized.text)),
     ...spoken.map((s) => mapSpan(s, normalized, words, normalized.text)),
   ];
   if (cleanup) mapped.push(...detectFillers(words));
@@ -222,9 +269,14 @@ export function makeSrt(words, detections, selected, maxWords = 9) {
   const lines = [];
   for (let i = 0, n = 1; i < words.length;) {
     const chunk = words.slice(i, i + maxWords); const start = chunk[0].start, end = chunk.at(-1).end;
-    lines.push(`${n++}\n${srtTime(start)} --> ${srtTime(end)}\n${redactedTranscript(chunk, detections.map((d) => ({ ...d, startWord: d.startWord - i, endWord: d.endWord - i })), selected)}\n`);
+    lines.push(`${n++}\n${srtTime(start)} --> ${srtTime(end)}\n${redactedTranscript(chunk, clipDetections(detections, i, i + chunk.length), selected)}\n`);
     i += maxWords;
   }
   return lines.join("\n");
+}
+function clipDetections(detections, startWord, endWord) {
+  return detections
+    .filter((d) => d.endWord > startWord && d.startWord < endWord)
+    .map((d) => ({ ...d, startWord: Math.max(d.startWord, startWord) - startWord, endWord: Math.min(d.endWord, endWord) - startWord }));
 }
 function srtTime(t) { const h = Math.floor(t / 3600), m = Math.floor(t / 60) % 60, s = Math.floor(t % 60), ms = Math.round((t % 1) * 1000); return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")},${String(ms).padStart(3,"0")}`; }

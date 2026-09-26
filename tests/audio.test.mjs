@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { existsSync, readFileSync } from "node:fs";
 import { pipeline, env } from "@huggingface/transformers";
-import { normalizeSpoken, detectTranscript, redactedTranscript, asrChunksToWords } from "../js/pii.js";
+import { normalizeSpoken, detectTranscript, redactedTranscript, makeSrt, asrChunksToWords } from "../js/pii.js";
 import { detectSilences, renderEditedAudio, encodeWav } from "../js/audio.js";
 
 const words = (s, step = 0.25) => s.split(/\s+/).map((text, i) => ({ text, start: i * step, end: i * step + step * 0.8 }));
@@ -27,6 +27,69 @@ test("PII detection maps spoken phone, email, name and password to word timestam
   const txt = redactedTranscript(w, d, selected);
   assert.ok(!txt.includes("415"));
   assert.match(txt, /\[PHONE\]/);
+});
+
+test("spoken 11-digit NANP phone with leading one redacts the whole span", async () => {
+  const w = words("Please call me back at one four one five five five five zero one three two Thanks", 0.32);
+  const d = await detectTranscript(w);
+  const phone = d.find((x) => x.label === "PHONE" && x.normalizedText === "14155550132");
+  assert.ok(phone);
+  assert.equal(phone.text, "one four one five five five five zero one three two");
+  assert.equal(redactedTranscript(w, d, new Set(d.map((x) => x.id))), "Please call me back at [PHONE] Thanks");
+});
+
+test("spoken dash separators inside SSN digit runs are redacted", async () => {
+  const w = words("My social security number is one two three dash four five dash six seven eight nine Please keep it private", 0.32);
+  const d = await detectTranscript(w);
+  const ssn = d.find((x) => x.label === "US_SSN" && x.normalizedText === "123-45-6789");
+  assert.ok(ssn);
+  assert.equal(ssn.text, "one two three dash four five dash six seven eight nine");
+  assert.ok(!redactedTranscript(w, d, new Set(d.map((x) => x.id))).includes("dash four five"));
+});
+
+test("spoken email local part accepts digit words", async () => {
+  const w = words("My email is john five at gmail dot com Send the receipt there", 0.32);
+  const n = normalizeSpoken(w);
+  assert.match(n.text, /john5@gmail\.com/);
+  const d = await detectTranscript(w);
+  assert.ok(d.some((x) => x.label === "EMAIL" && x.normalizedText === "john5@gmail.com"));
+  assert.equal(redactedTranscript(w, d, new Set(d.map((x) => x.id))), "My email is [EMAIL] Send the receipt there");
+});
+
+test("spelled password redaction extends over spelled characters, numbers, and symbols", async () => {
+  const phrase = "capital a lower b lower c number one number two symbol exclamation mark";
+  const w = words(`My password is ${phrase} Do not share it`, 0.32);
+  const d = await detectTranscript(w);
+  const pw = d.find((x) => x.label === "PASSWORD_OR_SECRET");
+  assert.ok(pw);
+  assert.equal(pw.text, phrase);
+  assert.equal(redactedTranscript(w, d, new Set(d.map((x) => x.id))), "My password is [PASSWORD_OR_SECRET] Do not share it");
+});
+
+test("SRT chunks clip overlapping detections so cross-boundary email words do not leak", async () => {
+  const w = words("Alpha beta gamma delta epsilon zeta eta john dot smith at gmail dot com now done", 0.32);
+  const d = await detectTranscript(w);
+  assert.ok(d.some((x) => x.label === "EMAIL"));
+  const srt = makeSrt(w, d, new Set(d.map((x) => x.id)));
+  assert.ok(!srt.includes("smith at gmail dot com"));
+  assert.match(srt, /\[EMAIL\] now done/);
+});
+
+test("spoken street address maps normalized address detection back to words", async () => {
+  const w = words("my address is one two three Main Street Seattle Washington");
+  const d = await detectTranscript(w);
+  const address = d.find((x) => x.label === "ADDRESS");
+  assert.ok(address);
+  assert.equal(address.normalizedText, "123 Main Street Seattle Washington");
+  assert.equal(redactedTranscript(w, d, new Set(d.map((x) => x.id))), "my address is [ADDRESS]");
+});
+
+test("audio preview blob URLs are revoked before replacement and reset", () => {
+  const app = readFileSync("js/app.js", "utf8");
+  assert.match(app, /audioUrl/);
+  assert.match(app, /function revokeAudioUrl\(\)/);
+  assert.match(app, /URL\.revokeObjectURL\(state\.audioUrl\)/);
+  assert.match(app, /function reset\(\) \{ revokeAudioUrl\(\);/);
 });
 
 test("filler and silence cleanup detectors", () => {
