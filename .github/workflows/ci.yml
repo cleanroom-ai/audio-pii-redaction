@@ -17,13 +17,13 @@ jobs:
     name: Unit + Whisper integration
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
           cache-dependency-path: package-lock.json
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: .cache/Xenova/whisper-tiny.en
           key: whisper-${{ hashFiles('models/README.md') }}
@@ -36,13 +36,13 @@ jobs:
     runs-on: ubuntu-latest
     needs: test
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
           cache-dependency-path: package-lock.json
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: .cache/Xenova/whisper-tiny.en
           key: whisper-${{ hashFiles('models/README.md') }}
@@ -57,7 +57,7 @@ jobs:
           node node_modules/@cleanroom-ai/core/scripts/serve.mjs . &
           for i in $(seq 1 30); do curl -sf http://127.0.0.1:8090/ >/dev/null && break; sleep 1; done
           node tests/e2e.browser.mjs http://127.0.0.1:8090/
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: e2e-screenshots
