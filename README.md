@@ -38,7 +38,7 @@ tags:
 
 <p align="center"><img src="assets/icon.svg" width="112" height="112" alt="Audio Redactor logo"></p>
 
-[![CI](https://github.com/paragpsawant/audio-pii-redaction/actions/workflows/ci.yml/badge.svg)](https://github.com/paragpsawant/audio-pii-redaction/actions/workflows/ci.yml)
+[![CI](https://github.com/cleanroom-ai/audio-pii-redaction/actions/workflows/ci.yml/badge.svg)](https://github.com/cleanroom-ai/audio-pii-redaction/actions/workflows/ci.yml)
 [Open the Hugging Face demo](https://huggingface.co/spaces/cleanroom-ai/audio-pii-redaction)
 
 **Bleep names, numbers & secrets in recordings — in your browser.**
@@ -98,6 +98,25 @@ E2E_BROWSER=chromium node tests/e2e.browser.mjs http://127.0.0.1:8090/
 - ASR and NER can make mistakes. Always review the waveform and transcript before sharing.
 - Very noisy, overlapping or music-heavy audio can reduce timestamp accuracy.
 - Browser audio decoding depends on formats supported by the user's browser.
+
+<!-- cleanroom-ai:family:start -->
+## Part of cleanroom-ai
+
+**Clean it before you share it.** Six free privacy tools built on one shared engine. Every model runs
+in your browser, so nothing you open is ever uploaded.
+
+| | Tool | Cleans | Demo | Code |
+|---|---|---|---|---|
+| 🕶️ | **Screenshot Redactor** | API keys, passwords, emails, card numbers, names, faces & QR codes in screenshots | [▶ Try it](https://huggingface.co/spaces/cleanroom-ai/pii-privacy-redaction) | [GitHub](https://github.com/cleanroom-ai/screenshot-redactor) |
+| 🧽 | **Log Scrubber** | tokens, cookies, passwords & PII in logs, `.env`, JSON and HAR files | [▶ Try it](https://huggingface.co/spaces/cleanroom-ai/log-secret-scrubber) | [GitHub](https://github.com/cleanroom-ai/log-secret-scrubber) |
+| 📄 | **PDF Redactor** | PII & secrets in PDFs, flattened and verified so no text survives | [▶ Try it](https://huggingface.co/spaces/cleanroom-ai/pdf-redaction) | [GitHub](https://github.com/cleanroom-ai/pdf-redaction) |
+| 🔊 | **Audio Redactor** 📍 *you are here* | bleeps names, phone & card numbers and secrets in recordings | [▶ Try it](https://huggingface.co/spaces/cleanroom-ai/audio-pii-redaction) | [GitHub](https://github.com/cleanroom-ai/audio-pii-redaction) |
+| 📷 | **Photo Share-Safe** | GPS & hidden EXIF metadata; blurs faces and license plates | [▶ Try it](https://huggingface.co/spaces/cleanroom-ai/photo-exif-privacy) | [GitHub](https://github.com/cleanroom-ai/photo-exif-privacy) |
+| 🎬 | **Video Redactor** | keys, names, emails & faces tracked through screen recordings | [▶ Try it](https://huggingface.co/spaces/cleanroom-ai/video-redaction) | [GitHub](https://github.com/cleanroom-ai/video-redaction) |
+| ⚙️ | **@cleanroom-ai/core** | the shared on-device engine: OCR, secret/PII rules, NER, face detection | — | [GitHub](https://github.com/cleanroom-ai/cleanroom-core) |
+
+All tools: [Hugging Face](https://huggingface.co/cleanroom-ai) · [GitHub](https://github.com/cleanroom-ai)
+<!-- cleanroom-ai:family:end -->
 
 ## Credits & licenses
 
