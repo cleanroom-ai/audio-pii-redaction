@@ -73,6 +73,8 @@ All runtime libraries and model files are vendored into `vendor/` and `models/` 
 
 ## Run locally
 
+Requires **Node.js 26 LTS** or newer (see `.nvmrc`).
+
 ```bash
 npm ci
 npm run vendor
@@ -89,8 +91,8 @@ E2E_BROWSER=chromium node tests/e2e.browser.mjs http://127.0.0.1:8090/
 
 ## CI/CD
 
-- `ci.yml`: installs Node 24, caches the pinned Whisper model, vendors all runtime assets, runs Node tests (including Whisper integration when the model is fetched), starts a local server and runs a real-browser no-upload E2E test.
-- `deploy-space.yml`: on `main`, if `HF_TOKEN` exists, vendors assets and uploads this static app to `cleanroom-ai/audio-pii-redaction` while excluding source-only files.
+- `ci.yml`: installs Node 26 LTS (from `.nvmrc`), caches the pinned Whisper model, vendors all runtime assets, runs Node tests (including Whisper integration when the model is fetched), starts a local server and runs a real-browser no-upload E2E test.
+- `deploy-space.yml`: on `main`, if `HF_TOKEN` exists, vendors assets and uploads this static app (via Python 3.15 + `huggingface_hub`) to `cleanroom-ai/audio-pii-redaction` while excluding source-only files.
 
 ## Limitations
 

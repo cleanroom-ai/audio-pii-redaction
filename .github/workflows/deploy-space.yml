@@ -18,7 +18,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
-          node-version: 24
+          node-version-file: .nvmrc
           cache: npm
           cache-dependency-path: package-lock.json
       - uses: actions/cache@v6
@@ -27,8 +27,18 @@ jobs:
           key: whisper-${{ hashFiles('models/README.md') }}
       - run: npm ci
       - run: npm run vendor
+      - name: Check for the HF_TOKEN secret
+        id: token
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          if [ -z "$HF_TOKEN" ]; then echo "::notice::HF_TOKEN is not set; skipping Space upload"; echo "ok=false" >> "$GITHUB_OUTPUT"; else echo "ok=true" >> "$GITHUB_OUTPUT"; fi
+      - uses: actions/setup-python@v7
+        if: steps.token.outputs.ok == 'true'
+        with:
+          python-version: "3.15"
       - name: Upload Space
-        if: ${{ secrets.HF_TOKEN != '' }}
+        if: steps.token.outputs.ok == 'true'
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
@@ -39,9 +49,6 @@ jobs:
               repo_id="cleanroom-ai/audio-pii-redaction",
               repo_type="space",
               folder_path=".",
-              ignore_patterns=["node_modules/**", ".cache/**", "tests/**", "scripts/**", ".github/**", "package.json", "package-lock.json", "_*.mjs"],
+              ignore_patterns=["node_modules/**", ".cache/**", "tests/**", "scripts/**", ".github/**", "package.json", "package-lock.json", ".nvmrc", "_*.mjs"],
           )
           PY
-      - name: Skip notice
-        if: ${{ secrets.HF_TOKEN == '' }}
-        run: echo "::notice::HF_TOKEN is not set; skipping Space upload"
