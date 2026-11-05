@@ -7,7 +7,7 @@ on:
         description: "Space URL to test (defaults to the published Space)"
         required: false
   workflow_run:
-    workflows: ["Deploy to Hugging Face Space"]
+    workflows: ["Deploy Hugging Face Space"]
     types: [completed]
   schedule:
     - cron: "17 6 * * 1"
